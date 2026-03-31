@@ -44,3 +44,45 @@ Run the following command in your environment to install necessary dependencies:
 
 ```bash
 pip install -U langchain langchain-community langchain-openai langchain-chroma pypdf pymupdf chromadb tiktoken
+
+## 3. Execution
+
+Open the .ipynb file in Google Colab or a local Jupyter server.
+
+Input your specific API keys in the Phase 1 setup cell.
+
+Ensure the 15 research papers are uploaded to the specified directory.
+
+Run all cells to build the vector database and view the 25-case evaluation results.
+
+---
+
+## System Architecture
+
+The system operates through five distinct phases to ensure high-fidelity outputs:
+
+**Ingestion:** Loading PDFs with PyMuPDFLoader for enhanced metadata extraction.
+
+**Indexing:** Vectorizing text into ChromaDB using OpenAI embeddings.
+
+**Retrieval:** Fetching relevant chunks and manually numbering them to establish a "Chain of Trust".
+
+**Grounded Generation:** Generating responses restricted to the provided context with level-adjusted vocabulary.
+
+**Bibliography Generation:** Automating the creation of a Mendeley-style references section at the end of each response.
+
+---
+
+## Key Performance Metrics
+
+**Groundedness:** Achieved a score of 9.8/10 on technical cases.
+
+**Hallucination Rate:** Successfully reduced to 0% through strict refusal mechanisms.
+
+**Citation Accuracy:** Achieved a score of 9.2/10 using the manual chunk numbering strategy.
+
+---
+
+## Author
+
+Abdul Hannaan, Faisal al Mohamedi
