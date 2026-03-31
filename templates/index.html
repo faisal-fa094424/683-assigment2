@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CMPE 683 — Assignment 2: RAG Enhancement</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 720px;
+      margin: 40px auto;
+      padding: 0 16px;
+      line-height: 1.5;
+    }
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 10px;
+    }
+    .qu-logo {
+      height: 56px;
+      width: auto;
+      object-fit: contain;
+    }
+    h1 { font-size: 1.35rem; margin: 0 0 2px; }
+    .subtitle { color: #555; font-size: 0.95rem; margin: 0 0 4px; }
+    .authors { color: #777; font-size: 0.85rem; margin: 0 0 20px; }
+    h2 { font-size: 1.1rem; margin-top: 0; }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .row {
+      margin: 12px 0;
+    }
+    label { display: block; margin-bottom: 4px; font-weight: 600; }
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      box-sizing: border-box;
+      padding: 8px;
+      font-family: inherit;
+      font-size: 0.95rem;
+    }
+    select {
+      padding: 6px 10px;
+      font-size: 1rem;
+    }
+    button {
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+    .msg {
+      margin-top: 14px;
+      font-weight: 600;
+    }
+    .ok { color: #0a7a2f; }
+    .err { color: #b42318; }
+    .answer {
+      margin-top: 12px;
+      white-space: pre-wrap;
+      font-weight: normal;
+      border-top: 1px solid #eee;
+      padding-top: 12px;
+    }
+    .sources {
+      margin-top: 10px;
+      font-size: 0.9rem;
+      color: #444;
+      font-weight: normal;
+      white-space: pre-wrap;
+      font-family: ui-monospace, monospace;
+    }
+    .context-debug {
+      margin-top: 12px;
+      font-size: 0.8rem;
+      color: #333;
+      font-weight: normal;
+    }
+    .context-debug pre {
+      margin: 8px 0 0;
+      padding: 10px;
+      background: #f6f6f6;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <img class="qu-logo" src="{{ url_for('static', filename='qulogo.png') }}" alt="Qatar University logo" />
+    <div>
+      <h1>CMPE 683 — Assignment 2</h1>
+      <p class="subtitle">Enhancing Your AI Application — Track A: RAG</p>
+      <p class="authors">By Abdulhannan &amp; Faisal</p>
+    </div>
+  </header>
+
+  <section class="card" aria-labelledby="upload-heading">
+    <h2 id="upload-heading">Upload new paper</h2>
+    <form id="uploadForm">
+      <div class="row">
+        <label for="fileInput">Choose PDF file</label>
+        <input id="fileInput" name="file" type="file" accept=".pdf,application/pdf" required />
+      </div>
+      <button type="submit">Upload paper</button>
+    </form>
+    <div id="uploadResult" class="msg" role="status"></div>
+  </section>
+
+  <section class="card" aria-labelledby="query-heading">
+    <h2 id="query-heading">Query research papers</h2>
+    <form id="queryForm">
+      <div class="row">
+        <label for="levelSelect">Explanation level</label>
+        <select id="levelSelect" name="level" required>
+          <option value="1">1 — PhD</option>
+          <option value="2" selected>2 — Master</option>
+          <option value="3">3 — Bachelor</option>
+          <option value="4">4 — School</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="queryInput">Question</label>
+        <textarea id="queryInput" name="query" placeholder="Ask about your indexed papers…" required></textarea>
+      </div>
+      <button type="submit">Run query</button>
+    </form>
+    <div id="queryResult" class="msg" role="status"></div>
+    <div id="queryAnswer" class="answer" hidden></div>
+    <div id="querySources" class="sources" hidden></div>
+    <div id="queryContextDebug" class="context-debug" hidden></div>
+  </section>
+
+  <script>
+    const uploadForm = document.getElementById("uploadForm");
+    const uploadResult = document.getElementById("uploadResult");
+
+    uploadForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      uploadResult.className = "msg";
+      uploadResult.textContent = "Uploading…";
+
+      try {
+        const resp = await fetch("/add_new_paper", {
+          method: "POST",
+          body: new FormData(uploadForm)
+        });
+        const json = await resp.json();
+
+        if (json.added === true) {
+          uploadResult.className = "msg ok";
+          uploadResult.textContent = "Paper added successfully.";
+        } else {
+          uploadResult.className = "msg err";
+          uploadResult.textContent = "Not added: " + (json.reason || "Unknown reason.");
+        }
+      } catch (err) {
+        uploadResult.className = "msg err";
+        uploadResult.textContent = "Request failed: " + err;
+      }
+    });
+
+    const queryForm = document.getElementById("queryForm");
+    const queryResult = document.getElementById("queryResult");
+    const queryAnswer = document.getElementById("queryAnswer");
+    const querySources = document.getElementById("querySources");
+    const queryContextDebug = document.getElementById("queryContextDebug");
+
+    queryForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      queryAnswer.hidden = true;
+      querySources.hidden = true;
+      queryContextDebug.hidden = true;
+      queryAnswer.textContent = "";
+      querySources.textContent = "";
+      queryContextDebug.textContent = "";
+      queryResult.className = "msg";
+      queryResult.textContent = "Querying…";
+
+      const query = document.getElementById("queryInput").value.trim();
+      const level = parseInt(document.getElementById("levelSelect").value, 10);
+
+      try {
+        const resp = await fetch("/query_research_papers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, level })
+        });
+        const json = await resp.json();
+
+        if (!resp.ok || json.error) {
+          queryResult.className = "msg err";
+          queryResult.textContent = json.error || "Request failed.";
+          return;
+        }
+
+        queryResult.className = "msg ok";
+        queryResult.textContent = "Done.";
+        queryAnswer.hidden = false;
+        queryAnswer.textContent = json.answer || "";
+        if (json.sources) {
+          querySources.hidden = false;
+          querySources.textContent = "Sources:\n" + json.sources;
+        }
+        if (json.context_validation) {
+          queryContextDebug.hidden = false;
+          queryContextDebug.innerHTML =
+            "<strong>Context check (retrieved chunks)</strong><pre>" +
+            JSON.stringify(json.context_validation, null, 2) +
+            "</pre>";
+        }
+      } catch (err) {
+        queryResult.className = "msg err";
+        queryResult.textContent = "Request failed: " + err;
+      }
+    });
+  </script>
+</body>
+</html>
