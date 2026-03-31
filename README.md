@@ -44,6 +44,7 @@ Run the following command in your environment to install necessary dependencies:
 
 ```bash
 pip install -U langchain langchain-community langchain-openai langchain-chroma pypdf pymupdf chromadb tiktoken
+```  
 
 ## 3. Execution
 
