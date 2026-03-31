@@ -12,25 +12,27 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 load_dotenv()
-os.environ["OPENAI_API_KEY"] = os.getenv("OpenAI_API_KEY")
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY") or os.getenv("OpenAI_API_KEY") or ""
 
 app = Flask(__name__)
 
-papers_folder = 'research_papers'
-VECTOR_DB_NAME = "chroma_db"
+PAPERS_DIR = Path("research_papers")
+CHROMA_DIR = Path("chroma_db")
 COLLECTION = "research_papers"
 
+PAPERS_DIR.mkdir(exist_ok=True)
+CHROMA_DIR.mkdir(exist_ok=True)
 
-RAG_PROMPT = """You are an academic research assistant specializing in Power Systems and AI.
 
-Answer the user's question using ONLY the CONTEXT chunks provided below.
-Each chunk header includes its source paper filename and page number.
+RAG_PROMPT = """You are a helpful academic research assistant for Power Systems and AI.
 
-Rules:
-1. Explanation Level: {level} (1=PhD, 2=Master, 3=Bachelor, 4=School). Adjust vocabulary accordingly.
-2. Cite sources using the chunk number shown in the header, e.g. [1], [2].
-3. If the context chunks are completely unrelated to the question, say: "I don't have information about this in my knowledge base."
-4. If the context is partially relevant, answer with what is available.
+Use the CONTEXT below to answer the user's question. Each chunk has a source filename and page.
+
+Guidelines:
+- Explanation Level: {level} (1=PhD, 2=Master, 3=Bachelor, 4=School). Adjust depth/vocabulary.
+- Cite chunks like [1], [2].
+- If the user gives a topic rather than a specific question, summarize what the context says about that topic.
+- Only say you lack information if the context is truly about a completely different subject.
 
 CONTEXT:
 {context}
@@ -80,7 +82,7 @@ def build_context(docs):
     return context, sources.strip()
 
 
-# ── routes ───────────────────────────────────────────────────────────────
+
 
 @app.get("/")
 def index():
@@ -131,10 +133,8 @@ def query_research_papers():
     if not query:
         return jsonify({"error": "Missing query."}), 400
 
-    if not any(CHROMA_DIR.iterdir()):
-        return jsonify({"error": "No papers indexed yet. Upload a paper first."}), 400
 
-    docs = get_chroma().similarity_search(query, k=20)
+    docs = get_chroma().similarity_search(query, k=50)
     if not docs:
         return jsonify({"answer": "I don't have information about this in my knowledge base.", "sources": ""})
 
