@@ -22,7 +22,7 @@ This repository documents the evolution of an AI-driven academic tool from a sim
 
 ## Repository Contents
 
-Assingment_2_with_outputs_.ipynb: The primary Python notebook containing environment setup, RAG initialization, extended evaluation logs, and the Mendeley citation system.
+Assingment_2_with_outputs_.ipynb ( Please run in google collab): The primary Python notebook containing environment setup, RAG initialization, extended evaluation logs, and the Mendeley citation system.
 
 research_papers/: A directory containing the 15 research PDFs used as the foundation for the vectorized knowledge base.
 
